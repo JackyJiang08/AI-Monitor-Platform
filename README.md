@@ -1,18 +1,31 @@
-# AI Monitor 🌍 ⚡️
+# AI Monitor Platform 🌍 ⚡️
 
-![AI Monitor Preview](https://aimonitor-nine.vercel.app/og-image.png)
-
-**AI Monitor** is a real-time, interactive dashboard and global map designed to track the rapidly evolving Artificial Intelligence industry. It aggregates, translates, and visualizes AI news, regulatory updates, hardware releases, and market shifts from across the globe in one unified view.
+**AI Monitor Platform** is a comprehensive, real-time, interactive dashboard and global map designed to track the rapidly evolving Artificial Intelligence industry. It aggregates, translates, and visualizes AI news, regulatory updates, hardware releases, and market shifts from across the globe in one unified view.
 
 🌐 **Live Demo:** [aimonitor-nine.vercel.app](https://aimonitor-nine.vercel.app/)
 
-## ✨ Key Features
+## ✨ Key Features & Modules
 
-- **Interactive Global Map:** Visualizes the geographic origin and impact level of AI events worldwide using animated markers.
-- **Real-Time Automated RSS Scraping:** Continuously fetches the latest AI news from 10+ global regions (US, China, EU, Japan, etc.) in their native languages.
-- **AI-Powered Analysis:** Leverages OpenAI to automatically translate foreign articles, summarize content, and dynamically score the severity and category (e.g., Hardware, Regulation, Model releases).
-- **Live News Feed:** A clean, filterable data feed showing the exact time elapsed since publication.
-- **Responsive UI:** Built with modern web standards, featuring a sleek, dark-mode ready interface optimized for both desktop and mobile viewing.
+The platform is divided into several specialized modules to provide a 360-degree view of the AI landscape:
+
+- **🌍 Overview (Interactive Map):** Visualizes the geographic origin and impact level of AI events worldwide using animated markers. Get a bird's-eye view of where the most critical AI developments are happening in real-time.
+- **📰 News Feed:** A clean, filterable data stream showing the latest AI developments. Filter by industry, severity, and timeframe to cut through the noise and find exactly what matters.
+- **🧠 Models:** Track the latest AI model releases, performance benchmarks, and capabilities. Keep up with the rapid pace of open-source and proprietary foundation models.
+- **📈 Market:** Monitor market trends, AI company stock performances, and financial shifts driven by AI advancements.
+- **💹 Trading:** Dedicated interface for AI-driven trading signals, quantitative analysis, and automated trading benchmarks.
+- **📚 Sources:** Manage and view the diverse array of global data sources feeding the platform, from local news outlets to specialized AI research publications.
+- **🔔 Notifications:** Customizable alert system designed to notify you immediately of critical AI events, regulatory changes, or major hardware announcements.
+
+## 🤖 AI Analysis by LLM & Data Pipeline
+
+At the core of the platform is a sophisticated, automated data engine powered by Large Language Models:
+
+- **Real-Time Automated Scraping:** Continuously fetches the latest AI news from 10+ global regions (US, China, EU, Japan, Korea, etc.) directly via native-language RSS feeds.
+- **LLM-Powered Processing:** Leverages OpenAI to ingest raw, multi-lingual data and automatically:
+  - **Translate** foreign articles into fluent English.
+  - **Summarize** lengthy news into concise, actionable insights.
+  - **Dynamically Score** the severity (Low to Critical) based on global impact.
+  - **Categorize** the news (e.g., Hardware, Regulation, Model releases) and pinpoint the exact geographic coordinates for the map.
 
 ## 🛠️ Tech Stack
 
@@ -20,7 +33,7 @@
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/), Shadcn UI
 - **Mapping:** [React Leaflet](https://react-leaflet.js.org/) & CartoDB tiles
 - **State Management:** [Zustand](https://github.com/pmndrs/zustand)
-- **Data Pipeline:** Node.js, `rss-parser`, OpenAI API (`gpt-4o-mini`)
+- **Data Pipeline:** Node.js, `rss-parser`, OpenAI API
 
 ## 🚀 Getting Started (Local Development)
 
@@ -52,6 +65,3 @@ To run the background worker that automatically scrapes and analyzes global news
 ```bash
 node start_live_news.js
 ```
-
-## 📄 License
-This project is licensed under the MIT License.
