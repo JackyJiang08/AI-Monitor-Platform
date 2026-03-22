@@ -8,13 +8,13 @@
 
 The platform is divided into several specialized modules to provide a 360-degree view of the AI landscape:
 
-- **🌍 Overview (Interactive Map):** Visualizes the geographic origin and impact level of AI events worldwide using animated markers. Get a bird's-eye view of where the most critical AI developments are happening in real-time.
-- **📰 News Feed:** A clean, filterable data stream showing the latest AI developments. Filter by industry, severity, and timeframe to cut through the noise and find exactly what matters.
-- **🧠 Models:** Track the latest AI model releases, performance benchmarks, and capabilities. Keep up with the rapid pace of open-source and proprietary foundation models.
-- **📈 Market:** Monitor market trends, AI company stock performances, and financial shifts driven by AI advancements.
-- **💹 Trading:** Dedicated interface for AI-driven trading signals, quantitative analysis, and automated trading benchmarks.
-- **📚 Sources:** Manage and view the diverse array of global data sources feeding the platform, from local news outlets to specialized AI research publications.
-- **🔔 Notifications:** Customizable alert system designed to notify you immediately of critical AI events, regulatory changes, or major hardware announcements.
+- **🌍 Overview (Interactive Map):** This core module visualizes the geographic origin and global impact level of AI events using animated, color-coded markers. It provides an immediate bird's-eye view of where the most critical technological breakthroughs and regulatory developments are happening in real-time.
+- **📰 News Feed:** A clean, continuously updated data stream showing the latest AI developments across the globe. Users can dynamically filter this feed by specific industries (like Hardware or Software), severity levels, and specific timeframes to easily cut through the noise and find exactly what matters to them.
+- **🧠 Models:** This dedicated section tracks the rapid pace of both open-source and proprietary foundation models. It provides comprehensive details on the latest model releases, parameter sizes, architecture updates, and performance benchmarks to keep users informed on the bleeding edge of AI capabilities.
+- **📈 Market:** Designed to monitor broader market trends, this module tracks AI company stock performances and macroeconomic shifts driven by AI advancements. It offers a comprehensive look at how emerging AI technologies are actively disrupting and shaping the global financial landscape.
+- **💹 Trading:** A highly specialized interface built for quantitative analysis and automated trading benchmarks. This tab focuses on interpreting AI-driven trading signals and transforming raw market sentiment into actionable, quantitative insights to help power automated, algorithmic trading strategies.
+- **📚 Sources:** A transparent and robust management view displaying the diverse array of global data sources that feed the platform's intelligence. It tracks everything from major financial publications to highly specialized, localized AI research outlets from around the world.
+- **🔔 Notifications:** A customizable, proactive alert system designed to ensure users never miss a critical update. Users can configure this module to push immediate notifications regarding severe AI events, sudden regulatory changes, or major hardware announcements as soon as they happen.
 
 ## 🤖 AI Analysis by LLM & Data Pipeline
 
