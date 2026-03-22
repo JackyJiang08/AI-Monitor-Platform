@@ -22,15 +22,26 @@ function calculateTimeAgo(publishedAt?: string): string {
 // Instantiate RSS parser (removed unused import)
 // const parser = new Parser();
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    let savedEvents: MapEntity[] = savedEventsData as MapEntity[];
+    // Ensure we handle both ES modules `{ default: [...] }` and direct JSON arrays
+    const rawSavedEvents = (savedEventsData as any)?.default || savedEventsData;
+    let savedEvents: MapEntity[] = Array.isArray(rawSavedEvents) ? rawSavedEvents : [];
+    
+    // Ensure mockAiNewsEvents is an array
+    const safeMockEvents = Array.isArray(mockAiNewsEvents) ? mockAiNewsEvents : [];
     
     // Combine mock data (historical/previous events) with live RSS events
-    const allEvents = [...savedEvents, ...mockAiNewsEvents];
+    const allEvents = [...savedEvents, ...safeMockEvents];
     
     // Read summary
-    let summaryData: any = JSON.parse(JSON.stringify(summaryDataRaw));
+    const rawSummaryData = (summaryDataRaw as any)?.default || summaryDataRaw;
+    let summaryData: any = {};
+    if (rawSummaryData) {
+      summaryData = JSON.parse(JSON.stringify(rawSummaryData));
+    }
     
     // Calculate timeAgo for summary bullets if they are objects
     if (summaryData && Array.isArray(summaryData.bullets)) {
