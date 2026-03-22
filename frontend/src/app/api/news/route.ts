@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { MapEntity } from '@/lib/mockData';
+import { MapEntity, mockAiNewsEvents } from '@/lib/mockData';
 import savedEventsData from '../../../../data/news.json';
 import summaryDataRaw from '../../../../data/news_summary.json';
 
@@ -26,6 +26,9 @@ export async function GET() {
   try {
     let savedEvents: MapEntity[] = savedEventsData as MapEntity[];
     
+    // Combine mock data (historical/previous events) with live RSS events
+    const allEvents = [...savedEvents, ...mockAiNewsEvents];
+    
     // Read summary
     let summaryData: any = JSON.parse(JSON.stringify(summaryDataRaw));
     
@@ -40,7 +43,7 @@ export async function GET() {
     }
 
     // Dynamically calculate timeAgo for ALL events based on current server time
-    const finalEvents = savedEvents.map(event => ({
+    const finalEvents = allEvents.map(event => ({
       ...event,
       timeAgo: calculateTimeAgo(event.publishedAt)
     }));

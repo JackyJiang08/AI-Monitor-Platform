@@ -43,6 +43,10 @@ export default function NewsPage() {
 
   useEffect(() => {
     fetchLiveNews();
+    const interval = setInterval(() => {
+      fetchLiveNews();
+    }, 30000); // Poll every 30 seconds
+    return () => clearInterval(interval);
   }, [fetchLiveNews]);
 
   const toggleIndustry = (ind: Industry) => {
