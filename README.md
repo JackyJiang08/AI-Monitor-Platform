@@ -26,6 +26,8 @@ At the core of the platform is a sophisticated, automated data engine powered by
   - **Summarize** lengthy news into concise, actionable insights.
   - **Dynamically Score** the severity (Low to Critical) based on global impact.
   - **Categorize** the news (e.g., Hardware, Regulation, Model releases) and pinpoint the exact geographic coordinates for the map.
+- **Corporate Trend Analysis:** The LLM continuously analyzes the overall momentum and sentiment surrounding individual AI-related companies, distilling massive amounts of news into clear, overarching trend reports.
+- **AI-Driven Trading Logic:** The system uses LLMs to interpret market shifts and news sentiment, transforming qualitative information into quantitative insights to help power automated trading strategies and benchmarks.
 
 ## 🛠️ Tech Stack
 
