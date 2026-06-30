@@ -32,6 +32,26 @@ At the core of the platform is a sophisticated, automated data engine powered by
 
 > The model is set via `CLAUDE_MODEL` in the pipeline scripts. Switch to `claude-haiku-4-5` to cut cost/latency on this high-volume pipeline.
 
+## 📊 Market Intelligence & Quant Engine
+
+The **Market** and **Trading** tabs are powered by a self-contained quantitative analysis engine, implemented identically on both ends:
+
+- **Backend:** `backend/backend/app/quant_analysis.py` + the `/api/market/*` and `/api/trading/signal` routes.
+- **Frontend:** `frontend/src/lib/quant.ts`.
+
+The engine turns a raw price series into an interpretable signal by blending four complementary factors into a single risk-adjusted composite score (−100…+100) with a confidence level and a written analyst rationale:
+
+| Factor | What it measures |
+| --- | --- |
+| **Momentum** | Multi-horizon (20-day / 60-day) trend persistence |
+| **Trend** | Price position relative to the 50-day moving average |
+| **Mean-reversion** | RSI(14) contrarian pressure at overbought/oversold extremes |
+| **Risk-adjustment** | Annualized Sharpe ratio, with a volatility conviction penalty |
+
+The score maps to a discrete signal — `STRONG_BUY` → `BUY` → `HOLD` → `SELL` → `STRONG_SELL`.
+
+> **Always-on demo mode:** if the live market backend is not reachable, the front-end transparently falls back to the quant engine running on deterministic, seeded data for a curated AI-sector universe (NVDA, MSFT, GOOGL, AMD, TSM, …). The Market Intelligence view therefore **always renders real analysis instead of a connection error**.
+
 ## 🛠️ Tech Stack
 
 - **Frontend:** [Next.js 15](https://nextjs.org/) (App Router), React 19, TypeScript

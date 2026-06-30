@@ -49,7 +49,7 @@ from .price_data import (
     update_polymarket_prices_and_values,
     update_stock_prices_and_values,
 )
-from .routers import models, news, social, system
+from .routers import market, models, news, social, system
 from .social_data import update_social_data
 from .system_data import update_system_status
 
@@ -151,6 +151,7 @@ app.add_middleware(
 )
 
 app.include_router(models.router, prefix="/api")
+app.include_router(market.router, prefix="/api")
 app.include_router(news.router, prefix="/api")
 app.include_router(social.router, prefix="/api")
 app.include_router(system.router, prefix="/api")
