@@ -1,13 +1,22 @@
 const fs = require('fs');
 const path = require('path');
+const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config({ path: '.env.local' });
 
 const GNEWS_API_KEY = process.env.GNEWS_API_KEY;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-if (!GNEWS_API_KEY || !OPENAI_API_KEY) {
-  console.error("Missing API keys in .env.local");
+if (!GNEWS_API_KEY || !ANTHROPIC_API_KEY) {
+  console.error("Missing API keys in .env.local (need GNEWS_API_KEY and ANTHROPIC_API_KEY)");
   process.exit(1);
+}
+
+const CLAUDE_MODEL = "claude-opus-4-8"; // switch to "claude-haiku-4-5" for cheaper/faster backfills
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+function parseJsonResponse(text) {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  return JSON.parse(cleaned);
 }
 
 // Ensure data directory exists
@@ -103,7 +112,7 @@ interface MapEntity {
 Here are the articles:
 `;
 
-async function processBatchWithOpenAI(articlesBatch) {
+async function processBatchWithClaude(articlesBatch) {
   const articlesForLLM = articlesBatch.map((a, index) => ({
     index,
     title: a.title,
@@ -114,33 +123,22 @@ async function processBatchWithOpenAI(articlesBatch) {
 
   const prompt = promptTemplate + JSON.stringify(articlesForLLM, null, 2);
 
-  console.log(`Sending batch of ${articlesBatch.length} articles to OpenAI...`);
+  console.log(`Sending batch of ${articlesBatch.length} articles to Claude...`);
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini", // Use mini for speed/cost, it's good enough for this
-        messages: [
-          { role: "system", content: "You are a data-formatting machine that outputs valid JSON only." },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.1
-      })
+    const message = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 8000,
+      system: "You are a quantitative AI-sector analyst that outputs valid JSON only — no prose, no markdown fences.",
+      messages: [{ role: "user", content: prompt }],
     });
 
-    if (!res.ok) {
-      console.error("OpenAI failed:", await res.text());
+    const textBlock = message.content.find(b => b.type === "text");
+    if (!textBlock) {
+      console.error("Claude returned no text content.");
       return [];
     }
+    const content = parseJsonResponse(textBlock.text);
 
-    const data = await res.json();
-    const content = JSON.parse(data.choices[0].message.content);
-    
     // Attach publishedAt dates
     const finalEvents = (content.events || []).map(event => {
       const orig = articlesBatch.find(a => a.url === event.sourceUrl);
@@ -153,7 +151,7 @@ async function processBatchWithOpenAI(articlesBatch) {
     return finalEvents;
 
   } catch (err) {
-    console.error("Error with OpenAI:", err.message);
+    console.error("Error with Claude:", err.message);
     return [];
   }
 }
@@ -180,23 +178,23 @@ async function run() {
     return;
   }
 
-  // 2. Process in batches with OpenAI (max 15 articles per batch to avoid token limits/hallucinations)
+  // 2. Process in batches with Claude (max 15 articles per batch to avoid token limits/hallucinations)
   const BATCH_SIZE = 15;
   let allProcessedEvents = [];
   
   for (let i = 0; i < allNewArticles.length; i += BATCH_SIZE) {
     const batch = allNewArticles.slice(i, i + BATCH_SIZE);
-    const processed = await processBatchWithOpenAI(batch);
+    const processed = await processBatchWithClaude(batch);
     allProcessedEvents.push(...processed);
     
-    // Small delay between OpenAI requests
+    // Small delay between Claude requests
     if (i + BATCH_SIZE < allNewArticles.length) {
-      console.log("Waiting 2 seconds before next OpenAI batch...");
+      console.log("Waiting 2 seconds before next Claude batch...");
       await new Promise(r => setTimeout(r, 2000));
     }
   }
   
-  console.log(`\nSuccessfully processed ${allProcessedEvents.length} events through OpenAI.`);
+  console.log(`\nSuccessfully processed ${allProcessedEvents.length} events through Claude.`);
   
   // 3. Save to file
   const updatedEvents = [...allProcessedEvents, ...savedEvents];

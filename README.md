@@ -16,18 +16,21 @@ The platform is divided into several specialized modules to provide a 360-degree
 - **📚 Sources:** A transparent and robust management view displaying the diverse array of global data sources that feed the platform's intelligence. It tracks everything from major financial publications to highly specialized, localized AI research outlets from around the world.
 - **🔔 Notifications:** A customizable, proactive alert system designed to ensure users never miss a critical update. Users can configure this module to push immediate notifications regarding severe AI events, sudden regulatory changes, or major hardware announcements as soon as they happen.
 
-## 🤖 AI Analysis by LLM & Data Pipeline
+## 🤖 AI Quant Analysis by Claude & Data Pipeline
 
-At the core of the platform is a sophisticated, automated data engine powered by Large Language Models:
+At the core of the platform is a sophisticated, automated data engine powered by **Anthropic's Claude** models:
 
 - **Real-Time Automated Scraping:** Continuously fetches the latest AI news from 10+ global regions (US, China, EU, Japan, Korea, etc.) directly via native-language RSS feeds.
-- **LLM-Powered Processing:** Leverages OpenAI to ingest raw, multi-lingual data and automatically:
+- **Claude-Powered Quant Processing:** Leverages **Claude (`claude-opus-4-8`)** to ingest raw, multi-lingual data and automatically:
   - **Translate** foreign articles into fluent English.
   - **Summarize** lengthy news into concise, actionable insights.
   - **Dynamically Score** the severity (Low to Critical) based on global impact.
+  - **Quantify market impact** — tag the affected public tickers, assign a directional market sentiment (bullish/bearish/neutral) and a −5…+5 impact magnitude, and distill a one-line quant takeaway per event.
   - **Categorize** the news (e.g., Hardware, Regulation, Model releases) and pinpoint the exact geographic coordinates for the map.
-- **Corporate Trend Analysis:** The LLM continuously analyzes the overall momentum and sentiment surrounding individual AI-related companies, distilling massive amounts of news into clear, overarching trend reports.
-- **AI-Driven Trading Logic:** The system uses LLMs to interpret market shifts and news sentiment, transforming qualitative information into quantitative insights to help power automated trading strategies and benchmarks.
+- **Daily Quant Market Pulse:** Claude distills the last 24 hours of catalysts into a 3-bullet, markets-desk-style brief — naming the catalyst, the likely beneficiary/at-risk ticker, and the directional read.
+- **AI-Driven Trading Logic:** The optional `live-trade-bench` backend interprets market shifts and news sentiment to power automated, benchmarked trading strategies.
+
+> The model is set via `CLAUDE_MODEL` in the pipeline scripts. Switch to `claude-haiku-4-5` to cut cost/latency on this high-volume pipeline.
 
 ## 🛠️ Tech Stack
 
@@ -35,7 +38,8 @@ At the core of the platform is a sophisticated, automated data engine powered by
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/), Shadcn UI
 - **Mapping:** [React Leaflet](https://react-leaflet.js.org/) & CartoDB tiles
 - **State Management:** [Zustand](https://github.com/pmndrs/zustand)
-- **Data Pipeline:** Node.js, `rss-parser`, OpenAI API
+- **Data Pipeline:** Node.js, `rss-parser`, [Anthropic Claude API](https://docs.claude.com/) (`@anthropic-ai/sdk`)
+- **Trading Backend (optional):** Python `live-trade-bench` quant engine under `backend/` (run locally for the Trading tab)
 
 ## 🚀 Getting Started (Local Development)
 
@@ -51,10 +55,11 @@ npm install
 ```
 
 ### 3. Set up Environment Variables
-Create a `.env.local` file in the `frontend` directory and add your OpenAI API key (required for the automated news fetcher):
+Copy `frontend/.env.example` to `frontend/.env.local` and add your **Anthropic API key** (required for the automated news fetcher):
 ```env
-OPENAI_API_KEY="sk-your-openai-api-key-here"
+ANTHROPIC_API_KEY="sk-ant-your-key-here"
 ```
+See `.env.example` for the optional `GNEWS_API_KEY` (backfill) and `NEXT_PUBLIC_API_URL` (Trading tab backend) variables.
 
 ### 4. Run the Development Server
 ```bash
@@ -67,3 +72,10 @@ To run the background worker that automatically scrapes and analyzes global news
 ```bash
 node start_live_news.js
 ```
+
+### 6. Trading Tab (optional)
+The **Trading** tab is powered by the Python `live-trade-bench` engine under `backend/`. It talks to a local API server (default `http://localhost:8000`, configurable via `NEXT_PUBLIC_API_URL`). Run that backend locally to enable the tab — it is **not** deployed alongside the Vercel frontend, so on the hosted demo the Trading tab is read-only/empty. See `backend/README.md` for how to start it.
+
+## 📄 License
+
+The AI Monitor application code (the `frontend/` app and data pipeline) is released under the [MIT License](LICENSE). The bundled `live-trade-bench` trading benchmark under `backend/` is a third-party project with its own license — see `backend/LICENSE`.

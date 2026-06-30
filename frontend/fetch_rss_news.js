@@ -1,13 +1,27 @@
 const fs = require('fs');
 const path = require('path');
 const Parser = require('rss-parser');
+const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config({ path: '.env.local' });
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-if (!OPENAI_API_KEY) {
-  console.error("Missing OPENAI_API_KEY in .env.local");
+if (!ANTHROPIC_API_KEY) {
+  console.error("Missing ANTHROPIC_API_KEY in .env.local");
   process.exit(1);
+}
+
+// Claude model used for translation, structuring, and quant analysis.
+// Opus 4.8 is the most capable model. To reduce cost/latency on this
+// high-volume pipeline, switch to "claude-haiku-4-5".
+const CLAUDE_MODEL = "claude-opus-4-8";
+
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+// Claude returns a text block; strip optional ```json fences before parsing.
+function parseJsonResponse(text) {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  return JSON.parse(cleaned);
 }
 
 const parser = new Parser();
@@ -76,29 +90,34 @@ async function fetchRSSForRegion(region) {
 }
 
 const promptTemplate = `
-You are an expert AI industry analyst. I will provide you with a list of recent AI news articles from various global regions. They might be in different languages.
-For each article, translate its context to English, analyze it, and convert it into a structured JSON object.
+You are an expert AI-sector quantitative analyst. I will provide you with a list of recent AI news articles from various global regions. They might be in different languages.
+For each article, translate its context to English, analyze it through a markets/quant lens, and convert it into a structured JSON object.
 
 Your output MUST be a JSON object with a single key "events" containing an array of objects matching this TypeScript interface exactly:
 
 type Severity = "LOW" | "MODERATE" | "ELEVATED" | "HIGH" | "CRITICAL";
 type Category = "Hardware" | "Software" | "Regulation" | "Research" | "Market" | "Model";
 type Industry = "Hardware" | "Cloud" | "Software" | "Consumer" | "Healthcare" | "Finance" | "Automotive" | "Robotics" | "Manufacturing" | "Legal" | "Defense" | "Security" | "Media" | "Education" | "Agriculture" | "Energy" | "Research";
+type MarketSentiment = "BULLISH" | "BEARISH" | "NEUTRAL";
 
 interface MapEntity {
   id: string; // generate a unique string (e.g. "rss-[random_id]")
   entityType: "News";
   title: string; // English translation of the headline
-  coordinates: [number, number]; // [longitude, latitude]. 
+  coordinates: [number, number]; // [longitude, latitude].
   category: Category;
   severity: Severity;
   summary: string; // 1-2 sentence English summary of what the news is about
   location: string; // e.g. "Beijing, China", "Seoul, South Korea", "Sydney, Australia", "Toronto, Canada", "San Francisco, USA"
   source: string; // The publisher name
   sourceUrl: string; // EXACT url provided in the input
-  whyItMatters: string; 
-  industry: Industry; 
+  whyItMatters: string;
+  industry: Industry;
   size: number; // LOW=14, MODERATE=18, ELEVATED=22, HIGH=26, CRITICAL=32
+  tickers: string[]; // Public stock tickers most directly affected (e.g. ["NVDA","TSM"]). Empty array if none are clearly implicated.
+  marketSentiment: MarketSentiment; // Likely directional impact on the affected names / the broader AI sector
+  marketImpact: number; // Quantified market-impact magnitude from -5 (strongly bearish) to +5 (strongly bullish); 0 if neutral/unclear
+  quantTakeaway: string; // One concise, market-oriented sentence: what a trader should take from this (catalyst, beneficiary, risk)
 }
 
 CRITICAL GEOGRAPHY INSTRUCTION: You MUST place the coordinates precisely at the specific CITY mentioned or most relevant to the news, NOT the geographic center of the country or state. Use exact city coordinates. 
@@ -115,7 +134,7 @@ Never use the center of the USA [-95.7129, 37.0902]. If you don't know the exact
 Here are the articles:
 `;
 
-async function processBatchWithOpenAI(articlesBatch) {
+async function processBatchWithClaude(articlesBatch) {
   const articlesForLLM = articlesBatch.map((a, index) => ({
     index,
     title: a.title,
@@ -126,33 +145,22 @@ async function processBatchWithOpenAI(articlesBatch) {
 
   const prompt = promptTemplate + JSON.stringify(articlesForLLM, null, 2);
 
-  console.log(`Sending batch of ${articlesBatch.length} articles to OpenAI for translation & formatting...`);
+  console.log(`Sending batch of ${articlesBatch.length} articles to Claude for translation, structuring & quant analysis...`);
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini", // Very fast and good at translation
-        messages: [
-          { role: "system", content: "You are a data-formatting machine that outputs valid JSON only." },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.2
-      })
+    const message = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 8000,
+      system: "You are a quantitative AI-sector analyst that outputs valid JSON only — no prose, no markdown fences.",
+      messages: [{ role: "user", content: prompt }],
     });
 
-    if (!res.ok) {
-      console.error("OpenAI failed:", await res.text());
+    const textBlock = message.content.find(b => b.type === "text");
+    if (!textBlock) {
+      console.error("Claude returned no text content.");
       return [];
     }
+    const content = parseJsonResponse(textBlock.text);
 
-    const data = await res.json();
-    const content = JSON.parse(data.choices[0].message.content);
-    
     // Explicit coordinate mapping to prevent ANY LLM hallucinations for major cities
     const HARDCODED_CITIES = {
       "san francisco": [-122.4194, 37.7749],
@@ -209,7 +217,7 @@ async function processBatchWithOpenAI(articlesBatch) {
 
     return finalEvents;
   } catch (err) {
-    console.error("Error with OpenAI:", err.message);
+    console.error("Error with Claude:", err.message);
     return [];
   }
 }
@@ -239,23 +247,23 @@ async function run() {
     return;
   }
 
-  // Process in batches with OpenAI
+  // Process in batches with Claude
   const BATCH_SIZE = 10;
   let allProcessedEvents = [];
   
   for (let i = 0; i < allNewArticles.length; i += BATCH_SIZE) {
     const batch = allNewArticles.slice(i, i + BATCH_SIZE);
-    const processed = await processBatchWithOpenAI(batch);
+    const processed = await processBatchWithClaude(batch);
     allProcessedEvents.push(...processed);
-    
-    // Small delay between OpenAI requests to prevent rate limits
+
+    // Small delay between Claude requests to stay within rate limits
     if (i + BATCH_SIZE < allNewArticles.length) {
-      console.log("Waiting 2 seconds before next OpenAI batch...");
+      console.log("Waiting 2 seconds before next Claude batch...");
       await new Promise(r => setTimeout(r, 2000));
     }
   }
-  
-  console.log(`\nSuccessfully processed ${allProcessedEvents.length} global events through OpenAI.`);
+
+  console.log(`\nSuccessfully processed ${allProcessedEvents.length} global events through Claude.`);
   
   // Save to file
   const updatedEvents = [...allProcessedEvents, ...savedEvents];
@@ -281,48 +289,38 @@ async function generateDailySummary(latestEvents) {
     return;
   }
   
-  console.log("Generating daily AI summary using LLM for last 24h events...");
-  
-  const prompt = `You are an expert AI industry analyst. Based on the following latest AI news events from today, generate a 3-bullet point "AI Daily Pulse".
-Each bullet MUST be summarized in a single, snappy, highly engaging sentence that is around 140 to 150 characters maximum so it fits perfectly on one line.
-Imitate how social media (like X/Twitter) summarizes significant tech news at the very top of a feed. 
+  console.log("Generating daily Quant Market Pulse using Claude for last 24h events...");
+
+  const prompt = `You are a top-tier AI-sector quantitative analyst writing a daily markets brief. Based on the following latest AI news events from today, generate a 3-bullet "Quant Market Pulse".
+Each bullet MUST be a single, snappy, market-oriented sentence of around 140 to 150 characters maximum so it fits perfectly on one line.
+Frame each bullet through a trading/markets lens: name the catalyst and the likely beneficiary or at-risk company/ticker, and the directional read.
+Imitate how a sharp markets desk summarizes significant tech catalysts at the top of a feed.
 Do NOT use a "Lead-in: xxxx" format. Just write the single attractive sentence directly.
-The summary MUST specifically include mentioned company names and the exact events (don't be too broad).
+The summary MUST specifically include mentioned company names / tickers and the exact events (don't be too broad).
 You MUST wrap the ENTIRE sentence in an HTML hyperlink to the original article. DO NOT add the word "Link" at the end.
-Output MUST be a JSON object with a single key "bullets", which is an array of objects. 
+Output MUST be a JSON object with a single key "bullets", which is an array of objects.
 Each object MUST have two keys:
-1. "html": The formatted HTML string (e.g. "<a href='https://example.com' target='_blank' class='hover:text-primary transition-colors underline font-medium text-foreground'>Apple acquires AI startup DarwinAI to aggressively boost its on-device capabilities.</a>")
+1. "html": The formatted HTML string (e.g. "<a href='https://example.com' target='_blank' class='hover:text-primary transition-colors underline font-medium text-foreground'>Nvidia (NVDA) lands a multi-year supply deal — bullish for TSMC and the broader AI hardware complex.</a>")
 2. "publishedAt": The exact "publishedAt" value from the corresponding event you summarized.
 
 Here are the latest events:
-${JSON.stringify(recentEvents.slice(0, 20).map(e => ({ title: e.title, summary: e.summary, url: e.sourceUrl, publishedAt: e.publishedAt })), null, 2)}`;
+${JSON.stringify(recentEvents.slice(0, 20).map(e => ({ title: e.title, summary: e.summary, tickers: e.tickers, marketSentiment: e.marketSentiment, quantTakeaway: e.quantTakeaway, url: e.sourceUrl, publishedAt: e.publishedAt })), null, 2)}`;
 
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are a top-tier tech analyst writing a daily brief. Output strictly valid JSON." },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3
-      })
+    const message = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 2000,
+      system: "You are a top-tier markets analyst writing a daily quant brief. Output strictly valid JSON — no prose, no markdown fences.",
+      messages: [{ role: "user", content: prompt }],
     });
 
-    if (!res.ok) {
-      console.error("OpenAI failed to generate summary:", await res.text());
+    const textBlock = message.content.find(b => b.type === "text");
+    if (!textBlock) {
+      console.error("Claude returned no text content for the summary.");
       return;
     }
+    const content = parseJsonResponse(textBlock.text);
 
-    const data = await res.json();
-    const content = JSON.parse(data.choices[0].message.content);
-    
     if (content.bullets && Array.isArray(content.bullets)) {
       const summaryPath = path.join(__dirname, 'data', 'news_summary.json');
       fs.writeFileSync(summaryPath, JSON.stringify({ bullets: content.bullets, updatedAt: new Date().toISOString() }, null, 2), 'utf8');
